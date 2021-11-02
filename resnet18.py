@@ -12,14 +12,13 @@ class ResidualBlock(nn.Module):
     def __init__(self, in_channels):
         super(ResidualBlock, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels= in_channels, kernel_size=3, stride=1, padding = 1,bias=False)
-        self.bn1 = nn.BatchNorm2d(num_features=in_channels, eps=1e-05, momentum=0.1, affine=True)
+        self.bn = nn.BatchNorm2d(num_features=in_channels, eps=1e-05, momentum=0.1, affine=True)
         self.conv2 = nn.Conv2d(in_channels=in_channels, out_channels=in_channels, kernel_size=3, stride=1, padding=1,bias=False)
-        self.bn2 = nn.BatchNorm2d(num_features=in_channels, eps=1e-05, momentum=0.1, affine=True)
     def forward(self,x):
         identity = x
-        y = self.bn1(self.conv1(x))
+        y = self.bn(self.conv1(x))
         y = F.relu(y)
-        y = self.bn2(self.conv2(y))
+        y = self.bn(self.conv2(y))
         return F.relu(y+identity)
 
 class ResidualBlock_plus(nn.Module):
@@ -29,22 +28,20 @@ class ResidualBlock_plus(nn.Module):
         self.downsample = nn.Conv2d(in_channels= in_channels, out_channels= out_channels, kernel_size=1, stride=2,padding=0, bias=False)
         self.bn = nn.BatchNorm2d(num_features=out_channels, eps=1e-05, momentum=0.1, affine=True)
         self.conv1 = nn.Conv2d(in_channels= in_channels, out_channels= out_channels, kernel_size= 3,stride=2, padding= 1, bias=False)
-        self.bn1 = nn.BatchNorm2d(num_features= out_channels, eps=1e-05, momentum=0.1, affine=True)
         self.conv2 = nn.Conv2d(in_channels= out_channels, out_channels= out_channels, kernel_size= 3, stride=1, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(num_features=out_channels, eps=1e-05, momentum=0.1, affine=True)
     def forward(self, x):
         identity = self.downsample(x)
         identity = self.bn(identity)
         y = self.conv1(x)
-        y = self.bn1(y)
+        y = self.bn(y)
         y = F.relu(y)
         y = self.conv2(y)
-        y = self.bn2(y)
+        y = self.bn(y)
         return F.relu(y+identity)
 
 
 class myResNet18(nn.Module):
-    def __init__(self, num_classes):
+    def __init__(self, num_classes, drop_prob):
         super(myResNet18, self).__init__()
         self.preconv = nn.Sequential(
             nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=3, bias=False),
@@ -60,7 +57,11 @@ class myResNet18(nn.Module):
         self.resn7 = ResidualBlock_plus(256, 512)
         self.resn8 = ResidualBlock(512)
         self.avg_pool = nn.AdaptiveAvgPool2d((1,1))
-        self.fc = nn.Linear(in_features=512, out_features=num_classes)
+        self.fc1 = nn.Sequential(
+            nn.Linear(in_features=512, out_features= 1024),
+            nn.ReLU(inplace=True))
+        self.dropout = nn.Dropout(p=drop_prob)
+        self.fc2 = nn.Linear(in_features=1024, out_features=num_classes)
 
     def forward(self,x):
         in_size = x.size(0)
@@ -75,10 +76,11 @@ class myResNet18(nn.Module):
         x = self.resn6(x)
         x = self.resn7(x)
         x = self.resn8(x)
-        x = self.resn8(x)
         x = self.avg_pool(x)
         x = x.view(x.size(0), -1)
-        out = self.fc(x)
-        return F.softmax(out ,dim=1)
+        x = self.fc1(x)
+        x = self.dropout(x)
+        out = self.fc2(x)
+        return F.softmax(out, dim=1)
 
 
