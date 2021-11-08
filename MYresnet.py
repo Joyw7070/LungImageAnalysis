@@ -1,5 +1,5 @@
 ''''
-resnet18
+resnet17
 kernel_size=3
 '''
 
@@ -18,7 +18,7 @@ class ResidualBlock(nn.Module):
         identity = x
         y = self.bn(self.conv1(x))
         y = F.relu(y)
-        y = self.bn(self.conv2(y))
+        y = self .bn(self.conv2(y))
         return F.relu(y+identity)
 
 class ResidualBlock_plus(nn.Module):
@@ -40,9 +40,9 @@ class ResidualBlock_plus(nn.Module):
         return F.relu(y+identity)
 
 
-class myResNet18(nn.Module):
+class myResNet17(nn.Module):
     def __init__(self, num_classes, drop_prob):
-        super(myResNet18, self).__init__()
+        super(myResNet17, self).__init__()
         self.preconv = nn.Sequential(
             nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=3, bias=False),
             nn.BatchNorm2d(num_features=64, eps=1e-05, momentum=0.1, affine=True),
@@ -58,10 +58,11 @@ class myResNet18(nn.Module):
         self.resn8 = ResidualBlock(512)
         self.avg_pool = nn.AdaptiveAvgPool2d((1,1))
         self.fc1 = nn.Sequential(
-            nn.Linear(in_features=512, out_features= 1024),
+            nn.Linear(in_features=512, out_features= 256,bias=True),
+            #nn.BatchNorm1d(num_features=256),
             nn.ReLU(inplace=True))
         self.dropout = nn.Dropout(p=drop_prob)
-        self.fc2 = nn.Linear(in_features=1024, out_features=num_classes)
+        self.fc2 = nn.Linear(in_features=256, out_features=num_classes)
 
     def forward(self,x):
         in_size = x.size(0)
@@ -70,9 +71,7 @@ class myResNet18(nn.Module):
         x = self.resn2(x)
         x = self.resn3(x)
         x = self.resn4(x)
-        x = self.resn4(x)
         x = self.resn5(x)
-        x = self.resn6(x)
         x = self.resn6(x)
         x = self.resn7(x)
         x = self.resn8(x)
